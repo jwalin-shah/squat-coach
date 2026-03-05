@@ -1,5 +1,9 @@
 # Squat Coach — On-Device Visual Coaching Agent
 
+## Documentation
+
+- [Data Methodology](./DATA_METHODOLOGY.md): how data was collected, generated, labeled, and sanitized for public sharing.
+
 A realtime squat coach designed to run on-device end to end:
 - visual input from the webcam
 - local pose estimation
