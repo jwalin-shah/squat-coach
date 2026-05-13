@@ -16,7 +16,7 @@ TEACHER_RAW_OUTPUT ?= data/gemini_teacher_raw.json
 GEMINI_MODEL ?= gemini-2.5-pro
 GEMINI_REVIEW_OUTPUT ?= data/results/gemini_rep_review.json
 
-.PHONY: install setup serve dirs clean-session baseline-summary eval-rules eval-mlx compare-session baseline teacher-dry-run teacher-generate review-rep
+.PHONY: install setup serve validate-ops dirs clean-session baseline-summary eval-rules eval-mlx compare-session baseline teacher-dry-run teacher-generate review-rep
 
 install:
 	$(PIP) install -r requirements.txt
@@ -27,6 +27,9 @@ setup:
 
 serve:
 	$(PYTHON) server.py
+
+validate-ops:
+	$(PYTHON) scripts/validate_ops_contract.py
 
 dirs:
 	mkdir -p data/raw_videos data/raw_sessions data/results data/extracted_frames

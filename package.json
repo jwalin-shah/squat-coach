@@ -4,7 +4,8 @@
   "description": "Fully local realtime squat feedback coach",
   "scripts": {
     "setup": "bash setup.sh",
-    "serve": "python3 server.py"
+    "serve": "python3 server.py",
+    "ops:validate": "python3 scripts/validate_ops_contract.py"
   },
   "keywords": [
     "squat",

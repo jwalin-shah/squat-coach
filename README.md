@@ -3,6 +3,7 @@
 ## Documentation
 
 - [Data Methodology](./DATA_METHODOLOGY.md): how data was collected, generated, labeled, and sanitized for public sharing.
+- [Operations Contract](./docs/OPERATIONS_CONTRACT.md): repo handoff, state-contract, privacy, and validation rules.
 
 A realtime squat coach designed to run on-device end to end:
 - visual input from the webcam
