@@ -3,6 +3,7 @@
 ## Documentation
 
 - [Data Methodology](./DATA_METHODOLOGY.md): how data was collected, generated, labeled, and sanitized for public sharing.
+- [Demo Validation](./docs/DEMO_VALIDATION.md): automated and manual checks for the local portfolio demo.
 
 A realtime squat coach designed to run on-device end to end:
 - visual input from the webcam
