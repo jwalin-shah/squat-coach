@@ -5,7 +5,8 @@
   "scripts": {
     "setup": "bash setup.sh",
     "serve": "python3 server.py",
-    "ops:validate": "python3 scripts/validate_ops_contract.py"
+    "ops:validate": "python3 scripts/validate_ops_contract.py",
+    "state:validate": "python3 scripts/validate_state_policy_contract.py"
   },
   "keywords": [
     "squat",
