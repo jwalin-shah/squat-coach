@@ -18,10 +18,10 @@ on cloud services after setup assets and models are installed.
 
 ## State Contract
 
-`SQUAT_STATE_SCHEMA.md` is the source of truth for the model-facing compact
-state. Runtime, offline export, teacher data, and model evaluation work should
-reduce live coaching examples to the v1 fields documented there before using
-them as model inputs.
+`SQUAT_STATE_SCHEMA.md` and `SQUAT_STATE_SCHEMA.json` are the source of truth
+for the model-facing compact state. Runtime, offline export, teacher data, and
+model evaluation work should reduce live coaching examples to the v1 fields
+documented there before using them as model inputs.
 
 The required v1 fields are:
 
@@ -37,6 +37,10 @@ The required v1 fields are:
 `knee_valgus_ratio` is optional for v1. Raw landmarks, full coordinate streams,
 camera metadata, and user-specific metadata are debugging or offline artifacts,
 not model-facing contract fields.
+
+`depth_history` and `phase_durations_ms` are offline/debug artifacts for v1.
+They must not be sent to the live local model unless a later schema version
+explicitly promotes temporal input.
 
 ## Data And Privacy Rules
 

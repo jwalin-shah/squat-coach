@@ -263,6 +263,7 @@ function computeLive(landmarks, phase, repCount, elapsedMs) {
   const hipMidY = (landmarks[LM.LEFT_HIP].y + landmarks[LM.RIGHT_HIP].y) / 2;
   return {
     phase,
+    rep_number: repCount,
     rep_count: repCount,
     knee_angle: Number(kneeAngle.toFixed(2)),
     hip_angle: Number(hipAngle.toFixed(2)),

@@ -984,6 +984,7 @@ function computeLiveMetrics(landmarks, phase, repCount, now, phaseStartTime) {
     hipBelowKnee: hipMidY > kneeMidY,
     live: {
       phase,
+      rep_number: repCount,
       rep_count: repCount,
       knee_angle: Number(kneeAngle.toFixed(2)),
       hip_angle: Number(hipAngle.toFixed(2)),
@@ -1635,9 +1636,10 @@ async function main() {
         knee_angle: Math.round(kneeAngle * 10) / 10,
         hip_angle: Math.round(hipAngle * 10) / 10,
         torso_angle: Math.round(torsoAngle * 10) / 10,
+        shin_angle: Math.round(shinAngle * 10) / 10,
+        hip_below_knee: !!hipBelowKnee,
+        confidence_min: Number(minConf.toFixed(4)),
         knee_valgus_ratio: kneeValgusRatio != null ? Math.round(kneeValgusRatio * 100) / 100 : 1,
-        depth_history: depthHistory.slice(-8),
-        phase_durations_ms: { ...phaseDurations },
       });
     }
 
