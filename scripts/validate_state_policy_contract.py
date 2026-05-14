@@ -123,6 +123,129 @@ def check_prompt_policy(schema: dict, errors: list[str]) -> None:
             errors.append(f"live feedback prompt includes excluded schema term `{field}`")
 
 
+def check_live_feedback_policy_call_paths(errors: list[str]) -> None:
+    import importlib.util
+    import types
+
+    prompt_spec = importlib.util.spec_from_file_location("prompt_templates_policy_check", PROMPT_TEMPLATES)
+    benchmark_spec = importlib.util.spec_from_file_location("benchmark_gemma_policy_check", ROOT / "benchmark_gemma.py")
+    if prompt_spec is None or prompt_spec.loader is None:
+        errors.append("cannot import prompt_templates.py for live feedback policy check")
+        return
+    if benchmark_spec is None or benchmark_spec.loader is None:
+        errors.append("cannot import benchmark_gemma.py for live feedback policy check")
+        return
+
+    prompt_module = importlib.util.module_from_spec(prompt_spec)
+    prompt_spec.loader.exec_module(prompt_module)
+    sys.path.insert(0, str(ROOT))
+    sys.modules.setdefault("loguru", types.SimpleNamespace(logger=types.SimpleNamespace(info=lambda *args, **kwargs: None)))
+    benchmark_module = importlib.util.module_from_spec(benchmark_spec)
+    benchmark_spec.loader.exec_module(benchmark_module)
+
+    setup_ok = {
+        "head_visible": True,
+        "feet_visible": True,
+        "distance_ok": True,
+        "centered": True,
+        "side_view_ok": True,
+    }
+    cases = (
+        {
+            "phase": "bottom",
+            "rep_number": 2,
+            "knee_angle": 116,
+            "hip_angle": 91,
+            "torso_angle": 49,
+            "shin_angle": 28,
+            "hip_below_knee": False,
+            "confidence_min": 0.9,
+            "knee_valgus_ratio": 0.74,
+            "expected_reason_code": "torso_forward",
+        },
+        {
+            "phase": "descending",
+            "rep_number": 2,
+            "knee_angle": 122,
+            "hip_angle": 102,
+            "torso_angle": 24,
+            "shin_angle": 24,
+            "hip_below_knee": False,
+            "confidence_min": 0.89,
+            "knee_valgus_ratio": 0.79,
+            "expected_reason_code": "knees_in",
+        },
+        {
+            "phase": "bottom",
+            "rep_number": 3,
+            "knee_angle": 108,
+            "hip_angle": 101,
+            "torso_angle": 22,
+            "shin_angle": 30,
+            "hip_below_knee": False,
+            "confidence_min": 0.88,
+            "knee_valgus_ratio": 0.95,
+            "expected_reason_code": "depth_shallow",
+        },
+        {
+            "phase": "ascending",
+            "rep_number": 4,
+            "knee_angle": 96,
+            "hip_angle": 94,
+            "torso_angle": 20,
+            "shin_angle": 26,
+            "hip_below_knee": True,
+            "confidence_min": 0.91,
+            "knee_valgus_ratio": 0.98,
+            "expected_reason_code": "good_depth",
+        },
+    )
+
+    for index, case in enumerate(cases, start=1):
+        expected_reason_code = case["expected_reason_code"]
+        snapshot = {key: value for key, value in case.items() if key != "expected_reason_code"}
+        direct = prompt_module.deterministic_live_feedback_for_squat_state(snapshot)
+        legacy = prompt_module.rule_live_feedback(snapshot)
+        benchmark_feedback = benchmark_module.rules_backend({"input": {**snapshot, "setup_state": setup_ok}})
+        if direct.get("reason_code") != expected_reason_code:
+            errors.append(f"canonical live feedback case {index} returned {direct.get('reason_code')}")
+        if legacy != direct:
+            errors.append(f"rule_live_feedback drifted from canonical live feedback in case {index}")
+        if benchmark_feedback != direct.get("feedback"):
+            errors.append(f"benchmark_gemma rules_backend bypasses canonical live feedback in case {index}")
+
+
+def check_synthetic_benchmark_gold_labels(errors: list[str]) -> None:
+    import importlib.util
+    import types
+
+    generator_spec = importlib.util.spec_from_file_location("generate_synthetic_data_policy_check", ROOT / "generate_synthetic_data.py")
+    benchmark_spec = importlib.util.spec_from_file_location("benchmark_gemma_gold_label_check", ROOT / "benchmark_gemma.py")
+    if generator_spec is None or generator_spec.loader is None:
+        errors.append("cannot import generate_synthetic_data.py for benchmark gold label check")
+        return
+    if benchmark_spec is None or benchmark_spec.loader is None:
+        errors.append("cannot import benchmark_gemma.py for benchmark gold label check")
+        return
+
+    sys.path.insert(0, str(ROOT))
+    sys.modules.setdefault("loguru", types.SimpleNamespace(logger=types.SimpleNamespace(info=lambda *args, **kwargs: None)))
+    generator_module = importlib.util.module_from_spec(generator_spec)
+    generator_spec.loader.exec_module(generator_module)
+    benchmark_module = importlib.util.module_from_spec(benchmark_spec)
+    benchmark_spec.loader.exec_module(benchmark_module)
+
+    for index, case in enumerate(generator_module.SEED_CASES, start=1):
+        row = generator_module.make_example(case, index)
+        expected = row["expected_feedback"]
+        actual = benchmark_module.rules_backend(row)
+        if actual != expected:
+            errors.append(
+                "synthetic benchmark gold label drifted from canonical rules backend "
+                f"for {row['id']}: expected {expected!r}, got {actual!r}"
+            )
+
+
 def check_server_boundary(errors: list[str]) -> None:
     source = SERVER.read_text(encoding="utf-8")
     if "compact_squat_state" not in source:
@@ -169,6 +292,8 @@ def main() -> int:
     if schema:
         check_schema_files(schema, errors)
         check_prompt_policy(schema, errors)
+        check_live_feedback_policy_call_paths(errors)
+        check_synthetic_benchmark_gold_labels(errors)
         check_server_boundary(errors)
         check_static_payload(errors)
 

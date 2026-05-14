@@ -741,7 +741,7 @@ def sanitize_coach_output(state, output):
     return sanitized
 
 
-def rule_live_feedback(snapshot):
+def deterministic_live_feedback_for_squat_state(snapshot):
     phase = snapshot.get("phase", "standing")
     torso_angle = float(snapshot.get("torso_angle") or 0)
     knee_valgus_ratio = float(snapshot.get("knee_valgus_ratio") or 1)
@@ -757,10 +757,14 @@ def rule_live_feedback(snapshot):
     return {"reason_code": "good_depth", "feedback": cues["good_depth"], "severity": "good", "speak": False}
 
 
+def rule_live_feedback(snapshot):
+    return deterministic_live_feedback_for_squat_state(snapshot)
+
+
 def sanitize_live_feedback(snapshot, output):
     if not isinstance(output, dict):
-        return rule_live_feedback(snapshot)
-    fallback = rule_live_feedback(snapshot)
+        return deterministic_live_feedback_for_squat_state(snapshot)
+    fallback = deterministic_live_feedback_for_squat_state(snapshot)
     reason_map = {
         "good_depth": ("Good depth.", "good", False),
         "depth_shallow": ("Go deeper.", "warn", True),
