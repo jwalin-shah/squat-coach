@@ -151,6 +151,13 @@ assert.equal(
   1,
   'a descent through bottomAngle followed by standing should complete one rep'
 );
+
+const bottomBounceSlowAscent = runSequence([170, 164, 154, 146, 120, 109, 105, 112, 113, 114, 130, 156]);
+assert.equal(
+  bottomBounceSlowAscent.filter((result) => result.repComplete).length,
+  1,
+  'a rep that reaches bottomAngle must still complete after a bottom bounce and slow ascent'
+);
 """
     subprocess.run(["node", "-e", harness], cwd=ROOT, check=True)
 
