@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -59,8 +60,9 @@ def validate_package() -> None:
 
 
 def validate_main_page() -> None:
+    source = read("static/index.html")
     parser = HtmlSmokeParser()
-    parser.feed(read("static/index.html"))
+    parser.feed(source)
     assert_local_scripts("static/index.html", parser)
     required_ids = {
         "loading",
@@ -88,6 +90,35 @@ def validate_main_page() -> None:
         "/models/pose_landmarker_lite.task",
         "/mediapipe/vision_bundle.mjs",
     )
+    validate_form_checker_interface(source)
+
+
+def validate_form_checker_interface(source: str) -> None:
+    form_checker = re.search(
+        r"class FormChecker \{(?P<body>.*?)\n\}\n\n// ============================================================\n// FEEDBACK ENGINE",
+        source,
+        re.DOTALL,
+    )
+    if not form_checker:
+        raise AssertionError("static/index.html is missing the FormChecker module boundary")
+    body = form_checker.group("body")
+    for expected in (
+        "this.issueIds = ['shallow', 'valgus', 'lean', 'depth-ok'];",
+        "evaluate({ landmarks, kneeAngle, torsoAngle, phase })",
+        "computeKneeValgusRatio(landmarks)",
+    ):
+        if expected not in body:
+            raise AssertionError(f"FormChecker interface is missing `{expected}`")
+
+    main_loop = source[source.index("function processFrame()") :]
+    for bypass in (
+        "formChecker.checkDepth(",
+        "formChecker.checkKneeValgus(",
+        "formChecker.checkTorsoLean(",
+        "['shallow', 'valgus', 'lean', 'depth-ok']",
+    ):
+        if bypass in main_loop:
+            raise AssertionError(f"processFrame bypasses FormChecker.evaluate with `{bypass}`")
 
 
 def validate_offline_page() -> None:
