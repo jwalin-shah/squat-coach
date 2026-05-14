@@ -14,10 +14,16 @@ SESSION_SUFFIX_RE = re.compile(r"(-rep\d+|-setup)$")
 def load_jsonl(path):
     rows = []
     with Path(path).open() as handle:
-        for line in handle:
+        for line_number, line in enumerate(handle, start=1):
             line = line.strip()
             if line:
-                rows.append(json.loads(line))
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"{path}:{line_number}: invalid JSONL row: {exc.msg}") from exc
+                if not isinstance(row, dict):
+                    raise ValueError(f"{path}:{line_number}: JSONL row must be an object.")
+                rows.append(row)
     return rows
 
 
@@ -110,7 +116,10 @@ def parse_args():
 
 def main():
     args = parse_args()
-    rows = load_jsonl(args.input)
+    try:
+        rows = load_jsonl(args.input)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     if not rows:
         raise SystemExit("Input dataset is empty.")
 

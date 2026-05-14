@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VALIDATORS = (
     ROOT / "scripts" / "validate_static_app.py",
     ROOT / "scripts" / "validate_cli_smoke.py",
+    ROOT / "scripts" / "validate_split_dataset_contract.py",
     ROOT / "scripts" / "validate_ops_contract.py",
     ROOT / "scripts" / "validate_state_policy_contract.py",
 )
@@ -24,6 +25,7 @@ PYTHON_COMPILE_TARGETS = (
     ROOT / "generate_synthetic_data.py",
     ROOT / "generate_gemini_dataset.py",
     ROOT / "evaluate_coach_dataset.py",
+    ROOT / "split_dataset_by_group.py",
 )
 
 
