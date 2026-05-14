@@ -10,15 +10,22 @@ Run from the repo root:
 
 ```bash
 npm run validate
-python3 -m py_compile server.py prompt_templates.py generate_synthetic_data.py generate_gemini_dataset.py evaluate_coach_dataset.py
-git diff --check
 ```
 
 Expected result:
 
 - Static app validation passes.
+- Operations and state-policy contract validation pass.
 - Core Python demo/eval modules compile.
-- No whitespace errors are present in the diff.
+
+Before PR handoff, also run the repository hygiene check required by the work
+pack:
+
+```bash
+git diff --check
+```
+
+Expected result: no whitespace errors are present in the diff.
 
 ## Local Runtime Setup
 
