@@ -1060,17 +1060,35 @@ class PhaseDetector {
 // ============================================================
 
 class FormChecker {
+  constructor() {
+    this.issueIds = ['shallow', 'valgus', 'lean', 'depth-ok'];
+  }
+
+  evaluate({ landmarks, kneeAngle, torsoAngle, phase }) {
+    const kneeValgusRatio = this.computeKneeValgusRatio(landmarks);
+    const checks = [
+      this.checkDepth(kneeAngle, phase),
+      this.checkKneeValgus(kneeValgusRatio, phase),
+      this.checkTorsoLean(torsoAngle, phase),
+    ].filter(Boolean);
+    return { checks, kneeValgusRatio };
+  }
+
+  computeKneeValgusRatio(landmarks) {
+    const kw = Math.abs(landmarks[LM.LEFT_KNEE].x - landmarks[LM.RIGHT_KNEE].x);
+    const aw = Math.abs(landmarks[LM.LEFT_ANKLE].x - landmarks[LM.RIGHT_ANKLE].x);
+    return aw > 0.01 ? kw / aw : null;
+  }
+
   checkDepth(kneeAngle, phase) {
     if (phase !== Phase.BOTTOM) return null;
     return kneeAngle > CONFIG.depthAngle
       ? { id: 'shallow', type: 'warn', text: 'Go deeper — break parallel' }
       : { id: 'depth-ok', type: 'good', text: 'Good depth' };
   }
-  checkKneeValgus(landmarks, phase) {
+  checkKneeValgus(kneeValgusRatio, phase) {
     if (phase !== Phase.DESCENDING && phase !== Phase.BOTTOM) return null;
-    const kw = Math.abs(landmarks[LM.LEFT_KNEE].x - landmarks[LM.RIGHT_KNEE].x);
-    const aw = Math.abs(landmarks[LM.LEFT_ANKLE].x - landmarks[LM.RIGHT_ANKLE].x);
-    if (aw > 0.01 && kw / aw < CONFIG.valgusRatio)
+    if (kneeValgusRatio != null && kneeValgusRatio < CONFIG.valgusRatio)
       return { id: 'valgus', type: 'bad', text: 'Knees caving — push them out' };
     return null;
   }
@@ -1577,9 +1595,7 @@ async function main() {
       updateRecorderPanel(recorder);
     }
 
-    const kw = Math.abs(landmarks[LM.LEFT_KNEE].x - landmarks[LM.RIGHT_KNEE].x);
-    const aw = Math.abs(landmarks[LM.LEFT_ANKLE].x - landmarks[LM.RIGHT_ANKLE].x);
-    const kneeValgusRatio = aw > 0.01 ? kw / aw : null;
+    const form = formChecker.evaluate({ landmarks, kneeAngle, torsoAngle, phase });
 
     recorder.record({
       timestamp_ms: Math.round(now),
@@ -1593,7 +1609,7 @@ async function main() {
       knee_angle_right: Number(rKnee.toFixed(2)),
       hip_angle: Number(hipAngle.toFixed(2)),
       torso_angle: Number(torsoAngle.toFixed(2)),
-      knee_valgus_ratio: kneeValgusRatio == null ? null : Number(kneeValgusRatio.toFixed(4)),
+      knee_valgus_ratio: form.kneeValgusRatio == null ? null : Number(form.kneeValgusRatio.toFixed(4)),
       left_right_knee_diff: Number(Math.abs(lKnee - rKnee).toFixed(2)),
       phase,
       rep_number: repCount,
@@ -1610,18 +1626,12 @@ async function main() {
     updateRecorderPanel(recorder);
 
     // Form checks
-    const checks = [
-      formChecker.checkDepth(kneeAngle, phase),
-      formChecker.checkKneeValgus(landmarks, phase),
-      formChecker.checkTorsoLean(torsoAngle, phase),
-    ].filter(Boolean);
-
-    for (const c of checks) decisionGate.update(c.id, true);
-    for (const id of ['shallow', 'valgus', 'lean', 'depth-ok']) {
-      if (!checks.find(c => c.id === id)) decisionGate.update(id, false);
+    for (const c of form.checks) decisionGate.update(c.id, true);
+    for (const id of formChecker.issueIds) {
+      if (!form.checks.find(c => c.id === id)) decisionGate.update(id, false);
     }
 
-    const confirmed = checks.filter(c => decisionGate.isConfirmed(c.id));
+    const confirmed = form.checks.filter(c => decisionGate.isConfirmed(c.id));
 
     if (!repComplete && confirmed.length > 0) {
       const fb = feedbackEngine.process(confirmed);
@@ -1639,7 +1649,7 @@ async function main() {
         shin_angle: Math.round(shinAngle * 10) / 10,
         hip_below_knee: !!hipBelowKnee,
         confidence_min: Number(minConf.toFixed(4)),
-        knee_valgus_ratio: kneeValgusRatio != null ? Math.round(kneeValgusRatio * 100) / 100 : 1,
+        knee_valgus_ratio: form.kneeValgusRatio != null ? Math.round(form.kneeValgusRatio * 100) / 100 : 1,
       });
     }
 
