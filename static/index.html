@@ -1030,8 +1030,10 @@ class PhaseDetector {
         if (kneeAngle < CONFIG.standingAngle && v < -CONFIG.angleVelocityThreshold) this.phase = Phase.DESCENDING;
         break;
       case Phase.DESCENDING:
-        if (kneeAngle <= CONFIG.bottomAngle || (Math.abs(v) < CONFIG.angleVelocityThreshold && kneeAngle < CONFIG.standingAngle - 15))
-          { this.phase = Phase.BOTTOM; this.wasAtBottom = true; }
+        if (kneeAngle <= CONFIG.bottomAngle || (Math.abs(v) < CONFIG.angleVelocityThreshold && kneeAngle < CONFIG.standingAngle - 15)) {
+          this.phase = Phase.BOTTOM;
+          this.wasAtBottom = kneeAngle <= CONFIG.bottomAngle;
+        }
         else if (kneeAngle >= CONFIG.standingAngle) this.phase = Phase.STANDING;
         break;
       case Phase.BOTTOM:

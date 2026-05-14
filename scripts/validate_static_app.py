@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import json
+import re
+import subprocess
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -90,6 +92,69 @@ def validate_main_page() -> None:
     )
 
 
+def extract_js(source: str, pattern: str, name: str) -> str:
+    """Extract one JavaScript definition from the static app.
+
+    Parameters
+    ----------
+    source : str
+        Full ``static/index.html`` source.
+    pattern : str
+        Regular expression matching the JavaScript definition.
+    name : str
+        Human-readable definition name for validation failures.
+
+    Returns
+    -------
+    str
+        Matched JavaScript source.
+    """
+    match = re.search(pattern, source, re.DOTALL)
+    if not match:
+        raise AssertionError(f"static/index.html is missing extractable {name}")
+    return match.group(0)
+
+
+def validate_phase_detector_regression() -> None:
+    """Validate PhaseDetector rep completion against shallow-pause regressions."""
+    source = read("static/index.html")
+    config = extract_js(source, r"const CONFIG = \{.*?\n\};", "CONFIG")
+    phase = extract_js(source, r"const Phase = \{.*?\};", "Phase")
+    detector = extract_js(
+        source,
+        r"class PhaseDetector \{.*?\n\}",
+        "PhaseDetector",
+    )
+    harness = f"""
+const assert = require('node:assert/strict');
+{config}
+{phase}
+{detector}
+
+function runSequence(angles) {{
+  const detector = new PhaseDetector();
+  const results = [];
+  for (const angle of angles) results.push(detector.update(angle));
+  return results;
+}}
+
+const shallowPause = runSequence([170, 164, 154, 146, 139, 139, 139, 145, 156, 162]);
+assert.equal(
+  shallowPause.some((result) => result.repComplete),
+  false,
+  'a mid-descent pause above bottomAngle must not complete a rep'
+);
+
+const fullRep = runSequence([170, 164, 154, 146, 120, 109, 109, 109, 112, 130, 156]);
+assert.equal(
+  fullRep.filter((result) => result.repComplete).length,
+  1,
+  'a descent through bottomAngle followed by standing should complete one rep'
+);
+"""
+    subprocess.run(["node", "-e", harness], cwd=ROOT, check=True)
+
+
 def validate_offline_page() -> None:
     parser = HtmlSmokeParser()
     parser.feed(read("static/offline-extract.html"))
@@ -136,6 +201,7 @@ def validate_prompt_contract() -> None:
 def main() -> None:
     validate_package()
     validate_main_page()
+    validate_phase_detector_regression()
     validate_offline_page()
     validate_server_contract()
     validate_prompt_contract()
