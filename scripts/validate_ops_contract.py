@@ -11,6 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 STATE_SCHEMA = ROOT / "SQUAT_STATE_SCHEMA.md"
 OPS_CONTRACT = ROOT / "docs" / "OPERATIONS_CONTRACT.md"
 PACKAGE_JSON = ROOT / "package.json"
+GITIGNORE = ROOT / ".gitignore"
+SERVER = ROOT / "server.py"
+RUN_MLX_DEMO = ROOT / "run_mlx_demo.sh"
+FIXTURE_README = ROOT / "data" / "fixtures" / "README.md"
 
 REQUIRED_STATE_FIELDS = (
     "phase",
@@ -91,6 +95,9 @@ def check_ops_contract(errors: list[str]) -> None:
 
     for required_text in (
         REQUIRED_RUNTIME_BOUNDARY,
+        "Fixture And Runtime Output Contract",
+        "Runtime outputs default to ignored local paths.",
+        "The only tracked path under `data/` is `data/fixtures/`.",
         "npm run ops:validate",
         "make validate-ops",
         "Public commits must not include",
@@ -101,6 +108,51 @@ def check_ops_contract(errors: list[str]) -> None:
     for field in REQUIRED_STATE_FIELDS:
         if f"`{field}`" not in contract:
             errors.append(f"docs/OPERATIONS_CONTRACT.md does not list `{field}`")
+
+
+def check_runtime_output_defaults(errors: list[str]) -> None:
+    """Validate local runtime outputs are separated from tracked fixtures.
+
+    Parameters
+    ----------
+    errors : list of str
+        Mutable collection of validation failures.
+    """
+    gitignore = read_text(GITIGNORE)
+    server = read_text(SERVER)
+    run_mlx_demo = read_text(RUN_MLX_DEMO)
+    fixture_readme = read_text(FIXTURE_README)
+
+    required_gitignore_entries = (
+        ".runtime/",
+        "data/*",
+        "!data/fixtures/",
+        "!data/fixtures/README.md",
+        "logs/*.jsonl",
+    )
+    for entry in required_gitignore_entries:
+        if entry not in gitignore.splitlines():
+            errors.append(f".gitignore does not include `{entry}`")
+
+    if "data/" in gitignore.splitlines():
+        errors.append(".gitignore must not ignore `data/` itself because `data/fixtures/` is tracked")
+
+    if '.runtime" / "logs" / "coach_events.jsonl"' not in server:
+        errors.append("server.py default COACH_LOG_PATH must write under `.runtime/logs/`")
+
+    if "$ROOT/.runtime/logs/coach_events.jsonl" not in run_mlx_demo:
+        errors.append("run_mlx_demo.sh default COACH_LOG_PATH must write under `.runtime/logs/`")
+
+    for required_text in (
+        "only tracked path under `data/`",
+        "small, deterministic fixtures",
+        "Runtime outputs",
+    ):
+        if required_text not in fixture_readme:
+            errors.append(f"data/fixtures/README.md is missing `{required_text}`")
+
+    if FIXTURE_README.stat().st_size > 4096:
+        errors.append("data/fixtures/README.md should stay small")
 
 
 def check_package_scripts(errors: list[str]) -> None:
@@ -135,13 +187,14 @@ def main() -> int:
     """
     errors: list[str] = []
 
-    for path in (STATE_SCHEMA, OPS_CONTRACT, PACKAGE_JSON):
+    for path in (STATE_SCHEMA, OPS_CONTRACT, PACKAGE_JSON, GITIGNORE, SERVER, RUN_MLX_DEMO, FIXTURE_README):
         check_file_exists(path, errors)
 
     if not errors:
         check_state_schema(errors)
         check_ops_contract(errors)
         check_package_scripts(errors)
+        check_runtime_output_defaults(errors)
 
     if errors:
         sys.stderr.write("Operations contract validation failed:\n")

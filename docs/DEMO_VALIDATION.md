@@ -88,7 +88,7 @@ Expected result:
 
 - Setup messages are deterministic and local.
 - Live cues use one of the canonical cue strings.
-- `logs/coach_events.jsonl` records snapshots and emitted cues.
+- `.runtime/logs/coach_events.jsonl` records snapshots and emitted cues.
 
 ## Known Limits
 

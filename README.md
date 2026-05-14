@@ -165,7 +165,7 @@ What is logged:
 - final emitted cue
 - whether setup gating or runtime suppression changed the result
 
-The JSONL log lands at `logs/coach_events.jsonl`.
+The JSONL log lands at `.runtime/logs/coach_events.jsonl`.
 
 ## Branch Split
 
@@ -399,7 +399,7 @@ bash run_mlx_demo.sh
 ```
 
 Notes:
-- live events are logged to `logs/coach_events.jsonl`
+- live events are logged to `.runtime/logs/coach_events.jsonl`
 - setup issues are gated before model inference
 - cadence and repeat cooldown are enforced in [`server.py`](./server.py)
 - the current Hugging Face LoRA adapters need an MLX-compatible adapter path or a merged MLX model; they are not consumed directly by `mlx-lm` unless converted
