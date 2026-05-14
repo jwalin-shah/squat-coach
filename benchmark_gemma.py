@@ -6,6 +6,8 @@ from pathlib import Path
 from loguru import logger
 from urllib import request
 
+from prompt_templates import deterministic_live_feedback_for_squat_state
+
 
 def load_jsonl(path):
     with Path(path).open() as handle:
@@ -28,13 +30,7 @@ def rules_backend(payload):
         return "Center yourself in the frame."
     if not setup["side_view_ok"]:
         return "Rotate into a clearer side view."
-    if state["knee_valgus_ratio"] < 0.82:
-        return "Push your knees out as you descend."
-    if state["torso_angle"] > 45:
-        return "Chest up. Too much forward lean."
-    if state["phase"] == "bottom" and state["knee_angle"] > 100:
-        return "Go deeper and break parallel."
-    return "Good depth. Keep going."
+    return deterministic_live_feedback_for_squat_state(state)["feedback"]
 
 
 def openai_backend(payload, model, base_url):

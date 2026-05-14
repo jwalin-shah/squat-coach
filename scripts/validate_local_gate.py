@@ -20,6 +20,7 @@ VALIDATORS = (
 PYTHON_COMPILE_TARGETS = (
     ROOT / "server.py",
     ROOT / "prompt_templates.py",
+    ROOT / "benchmark_gemma.py",
     ROOT / "generate_synthetic_data.py",
     ROOT / "generate_gemini_dataset.py",
     ROOT / "evaluate_coach_dataset.py",
