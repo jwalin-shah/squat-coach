@@ -14,12 +14,14 @@ Run:
 
 ```bash
 npm run validate
-python3 -m py_compile server.py prompt_templates.py generate_synthetic_data.py generate_gemini_dataset.py evaluate_coach_dataset.py
 git diff --check
 ```
 
 ### Notes
 
+- `npm run validate` is the authoritative local gate. It runs the executable
+  static app, operations contract, and state policy validators, then compiles
+  the core Python demo/eval modules.
 - `python3 -m unittest discover` currently discovers zero tests and should not be treated as validation evidence.
 - Live webcam, MediaPipe model download, and local model inference remain manual demo checks.
 
@@ -36,7 +38,6 @@ Validation:
 
 ```bash
 npm run validate
-python3 -m py_compile server.py prompt_templates.py generate_synthetic_data.py generate_gemini_dataset.py evaluate_coach_dataset.py
 git diff --check
 ```
 

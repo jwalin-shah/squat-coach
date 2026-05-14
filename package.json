@@ -5,7 +5,7 @@
   "scripts": {
     "setup": "bash setup.sh",
     "serve": "python3 server.py",
-    "validate": "python3 scripts/validate_static_app.py && python3 scripts/validate_ops_contract.py && python3 scripts/validate_state_policy_contract.py",
+    "validate": "python3 scripts/validate_local_gate.py",
     "ops:validate": "python3 scripts/validate_ops_contract.py",
     "state:validate": "python3 scripts/validate_state_policy_contract.py"
   },

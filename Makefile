@@ -29,9 +29,7 @@ serve:
 	$(PYTHON) server.py
 
 validate:
-	$(PYTHON) scripts/validate_static_app.py
-	$(PYTHON) scripts/validate_ops_contract.py
-	$(PYTHON) scripts/validate_state_policy_contract.py
+	$(PYTHON) scripts/validate_local_gate.py
 
 validate-ops:
 	$(PYTHON) scripts/validate_ops_contract.py
