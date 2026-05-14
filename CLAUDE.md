@@ -170,7 +170,7 @@ import sys
 
 logger.remove()  # remove default stderr sink
 logger.add(sys.stderr, level="INFO", format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}")
-logger.add("logs/squat_coach.log", rotation="10 MB", retention="7 days", level="DEBUG", serialize=True)
+logger.add(".runtime/logs/squat_coach.log", rotation="10 MB", retention="7 days", level="DEBUG", serialize=True)
 ```
 
 **Log levels — use the correct level:**

@@ -54,6 +54,18 @@ Generated data should be treated as local until it is intentionally reviewed for
 public release. Gemini or other cloud teacher outputs belong in local data
 directories unless a maintainer explicitly approves sharing them.
 
+## Fixture And Runtime Output Contract
+
+Runtime outputs default to ignored local paths. Generated logs belong under
+`.runtime/logs/` unless `COACH_LOG_PATH` is explicitly set. Offline datasets,
+session exports, generated videos, evaluation summaries, and model-review
+artifacts belong under ignored `data/` paths.
+
+The only tracked path under `data/` is `data/fixtures/`. Fixtures must be small,
+deterministic, synthetic or otherwise approved for public release, and documented
+in `data/fixtures/README.md`. Do not put personal session exports, generated
+teacher outputs, or cache material in the fixture tree.
+
 ## Validation Hook
 
 Run this lightweight operations check before handing off repo-ops or schema

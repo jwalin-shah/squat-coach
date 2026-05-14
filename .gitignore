@@ -1,12 +1,9 @@
 .venv/
 .env
 node_modules/
-data/
-data/raw_videos/
-data/raw_sessions/
-data/results/
-data/extracted_frames/
-data/coach_eval_results.json
+data/*
+!data/fixtures/
+!data/fixtures/README.md
 **/.venv
 **/.env
 **/genericteam-terraform-sa.json
@@ -16,12 +13,15 @@ data/coach_eval_results.json
 **/static/mediapipe/
 **/__pycache__/
 **/node_modules/
-**/data/
+**/data/*
+!data/fixtures/
+!data/fixtures/README.md
 
 # Local/private runtime artifacts
 .DS_Store
 .env
 .env.*
+.runtime/
 logs/*.log
 logs/*.jsonl
 models/
