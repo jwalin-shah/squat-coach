@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 VALIDATORS = (
     ROOT / "scripts" / "validate_static_app.py",
+    ROOT / "scripts" / "validate_cli_smoke.py",
     ROOT / "scripts" / "validate_ops_contract.py",
     ROOT / "scripts" / "validate_state_policy_contract.py",
 )

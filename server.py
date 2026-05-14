@@ -2,6 +2,7 @@
 Squat Coach — Local Server
 Serves everything from disk. Zero cloud dependencies at runtime.
 """
+import argparse
 import json
 import os
 import time
@@ -294,9 +295,122 @@ async def index():
 # ---- Static files fallback ----
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 
-if __name__ == "__main__":
+
+def positive_port(value):
+    """Parse a TCP port argument.
+
+    Parameters
+    ----------
+    value : str
+        Raw command-line port value.
+
+    Returns
+    -------
+    int
+        Parsed TCP port in the inclusive range 1..65535.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the value is not an integer TCP port.
+    """
+    try:
+        port = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("port must be an integer") from exc
+    if port < 1 or port > 65535:
+        raise argparse.ArgumentTypeError("port must be between 1 and 65535")
+    return port
+
+
+def build_parser():
+    """Build the server command-line parser.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Parser for the local server entrypoint.
+    """
+    parser = argparse.ArgumentParser(description="Serve the local Squat Coach demo.")
+    parser.add_argument("--host", default="0.0.0.0", help="host interface to bind")
+    parser.add_argument("--port", default=8420, type=positive_port, help="TCP port to bind")
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="validate imports and local app assets without starting the server",
+    )
+    return parser
+
+
+def run_smoke_check():
+    """Validate the no-secret server startup contract.
+
+    Returns
+    -------
+    int
+        Zero when imports, static assets, routes, and compact-state wiring are
+        available; otherwise a nonzero status code.
+    """
+    missing = [
+        path.relative_to(BASE)
+        for path in (
+            BASE / "static" / "index.html",
+            BASE / "static" / "offline-extract.html",
+            BASE / "prompt_templates.py",
+        )
+        if not path.exists()
+    ]
+    if missing:
+        print(f"Smoke check failed: missing required files: {missing}")
+        return 1
+
+    route_paths = {getattr(route, "path", "") for route in app.routes}
+    required_routes = {"/", "/models/{filename}", "/mediapipe/{filename}", "/ws/coach"}
+    missing_routes = sorted(required_routes - route_paths)
+    if missing_routes:
+        print(f"Smoke check failed: missing required routes: {missing_routes}")
+        return 1
+
+    sample_state = compact_squat_state(
+        {
+            "phase": "bottom",
+            "rep_count": 1,
+            "knee_angle": 98,
+            "hip_angle": 82,
+            "torso_angle": 28,
+            "shin_angle": 24,
+            "hip_below_knee": True,
+            "confidence_min": 0.88,
+        }
+    )
+    if sample_state.get("rep_number") != 1:
+        print("Smoke check failed: compact state did not map rep_count to rep_number")
+        return 1
+
+    print("Server CLI smoke check passed.")
+    return 0
+
+
+def main(argv=None):
+    """Run the server command-line entrypoint.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        Command-line arguments excluding the executable name. Defaults to
+        ``sys.argv[1:]`` through argparse.
+
+    Returns
+    -------
+    int
+        Process exit code.
+    """
+    args = build_parser().parse_args(argv)
+    if args.smoke:
+        return run_smoke_check()
+
     print("\n  🏋️  Squat Coach — Fully Local")
-    print("  ➜  http://localhost:8420")
+    print(f"  ➜  http://localhost:{args.port}")
     if COACH_BACKEND == "mlx":
         print(f"  ➜  Coach backend: mlx ({MLX_MODEL})")
         if MLX_ADAPTER_PATH:
@@ -313,4 +427,9 @@ if __name__ == "__main__":
         )
     print(f"  ➜  Log file: {COACH_LOG_PATH}")
     print("  ➜  Disconnect from internet anytime\n")
-    uvicorn.run(app, host="0.0.0.0", port=8420)
+    uvicorn.run(app, host=args.host, port=args.port)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
