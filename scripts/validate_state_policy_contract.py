@@ -215,6 +215,37 @@ def check_live_feedback_policy_call_paths(errors: list[str]) -> None:
             errors.append(f"benchmark_gemma rules_backend bypasses canonical live feedback in case {index}")
 
 
+def check_synthetic_benchmark_gold_labels(errors: list[str]) -> None:
+    import importlib.util
+    import types
+
+    generator_spec = importlib.util.spec_from_file_location("generate_synthetic_data_policy_check", ROOT / "generate_synthetic_data.py")
+    benchmark_spec = importlib.util.spec_from_file_location("benchmark_gemma_gold_label_check", ROOT / "benchmark_gemma.py")
+    if generator_spec is None or generator_spec.loader is None:
+        errors.append("cannot import generate_synthetic_data.py for benchmark gold label check")
+        return
+    if benchmark_spec is None or benchmark_spec.loader is None:
+        errors.append("cannot import benchmark_gemma.py for benchmark gold label check")
+        return
+
+    sys.path.insert(0, str(ROOT))
+    sys.modules.setdefault("loguru", types.SimpleNamespace(logger=types.SimpleNamespace(info=lambda *args, **kwargs: None)))
+    generator_module = importlib.util.module_from_spec(generator_spec)
+    generator_spec.loader.exec_module(generator_module)
+    benchmark_module = importlib.util.module_from_spec(benchmark_spec)
+    benchmark_spec.loader.exec_module(benchmark_module)
+
+    for index, case in enumerate(generator_module.SEED_CASES, start=1):
+        row = generator_module.make_example(case, index)
+        expected = row["expected_feedback"]
+        actual = benchmark_module.rules_backend(row)
+        if actual != expected:
+            errors.append(
+                "synthetic benchmark gold label drifted from canonical rules backend "
+                f"for {row['id']}: expected {expected!r}, got {actual!r}"
+            )
+
+
 def check_server_boundary(errors: list[str]) -> None:
     source = SERVER.read_text(encoding="utf-8")
     if "compact_squat_state" not in source:
@@ -262,6 +293,7 @@ def main() -> int:
         check_schema_files(schema, errors)
         check_prompt_policy(schema, errors)
         check_live_feedback_policy_call_paths(errors)
+        check_synthetic_benchmark_gold_labels(errors)
         check_server_boundary(errors)
         check_static_payload(errors)
 
