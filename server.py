@@ -12,7 +12,7 @@ from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
 
-from prompt_templates import LIVE_FEEDBACK_SCHEMA, build_live_feedback_messages, rule_live_feedback, sanitize_live_feedback
+from prompt_templates import LIVE_FEEDBACK_SCHEMA, build_live_feedback_messages, compact_squat_state, rule_live_feedback, sanitize_live_feedback
 
 app = FastAPI(title="Squat Coach")
 
@@ -270,17 +270,18 @@ async def coaching_ws(websocket: WebSocket):
             if setup_result is not None:
                 setup_result["source"] = "rules_setup_gate"
                 final = apply_runtime_controls(snapshot, setup_result, state)
-                log_event({"ts": time.time(), "snapshot": snapshot, "result": final})
+                log_event({"ts": time.time(), "snapshot": compact_squat_state(snapshot), "result": final})
                 await websocket.send_json(final)
                 continue
+            compact_snapshot = compact_squat_state(snapshot)
             try:
-                result, source = model_chat(snapshot)
+                result, source = model_chat(compact_snapshot)
                 result["source"] = source
             except (ImportError, ModuleNotFoundError, error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError, ValueError) as exc:
-                result = rule_live_feedback(snapshot)
+                result = rule_live_feedback(compact_snapshot)
                 result["source"] = f"rules_fallback:{type(exc).__name__}"
             final = apply_runtime_controls(snapshot, result, state)
-            log_event({"ts": time.time(), "snapshot": snapshot, "result": final})
+            log_event({"ts": time.time(), "snapshot": compact_snapshot, "result": final})
             await websocket.send_json(final)
     except Exception:
         pass

@@ -1,0 +1,49 @@
+{
+  "schema_version": "squat_state_v1",
+  "runtime_boundary": "video -> MediaPipe -> deterministic squat state -> local model -> coaching JSON",
+  "model_facing_fields": [
+    "phase",
+    "rep_number",
+    "knee_angle",
+    "hip_angle",
+    "torso_angle",
+    "shin_angle",
+    "hip_below_knee",
+    "confidence_min"
+  ],
+  "optional_model_facing_fields": [
+    "knee_valgus_ratio"
+  ],
+  "phase_enum": [
+    "standing",
+    "descending",
+    "bottom",
+    "ascending"
+  ],
+  "excluded_model_facing_fields": [
+    "raw_landmarks",
+    "coordinates",
+    "depth_history",
+    "phase_durations_ms",
+    "camera_metadata",
+    "user_metadata"
+  ],
+  "live_feedback_policy": {
+    "priority_order": [
+      "torso_forward",
+      "knees_in",
+      "depth_shallow",
+      "good_depth"
+    ],
+    "torso_warn_deg": 45,
+    "knee_valgus_warn_ratio": 0.82,
+    "bottom_depth_knee_angle_deg": 100,
+    "cues": {
+      "torso_forward": "Chest up.",
+      "knees_in": "Knees out.",
+      "depth_shallow": "Go deeper.",
+      "good_depth": "Good depth.",
+      "setup_issue": "Fix your camera setup."
+    }
+  }
+}

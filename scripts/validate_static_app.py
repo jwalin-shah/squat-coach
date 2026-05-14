@@ -50,7 +50,9 @@ def validate_package() -> None:
     package = json.loads(read("package.json"))
     assert package["type"] == "commonjs"
     assert package["scripts"]["serve"] == "python3 server.py"
-    assert package["scripts"]["validate"] == "python3 scripts/validate_static_app.py"
+    validate_script = package["scripts"]["validate"]
+    if "python3 scripts/validate_static_app.py" not in validate_script:
+        raise AssertionError("package.json validate script must run validate_static_app.py")
     for dependency in ("@mediapipe/tasks-vision", "vite"):
         if dependency not in package["dependencies"]:
             raise AssertionError(f"package.json is missing {dependency}")

@@ -1,6 +1,7 @@
 # Squat State Schema v1
 
 This document locks the compact parameter set for the squat coach model and data pipeline.
+The machine-readable companion schema is [`SQUAT_STATE_SCHEMA.json`](./SQUAT_STATE_SCHEMA.json).
 
 ## Goal
 
@@ -17,6 +18,7 @@ These are the core fields we are locking for v1:
 
 ```json
 {
+  "schema_version": "squat_state_v1",
   "phase": "standing|descending|bottom|ascending",
   "rep_number": 3,
   "knee_angle": 101.2,
@@ -102,6 +104,8 @@ Do not include these in the model contract right now:
 - user preference metadata
 - complex timing features
 - large rep-history payloads
+- `depth_history`
+- `phase_durations_ms`
 
 These may be useful later, but they are noise for the current stage.
 
@@ -169,6 +173,9 @@ Example:
 ```
 
 This keeps the schema narrow while allowing temporal reasoning later.
+
+Temporal windows are a future extension. They are not part of the v1 live
+model-facing payload.
 
 ## Decision
 

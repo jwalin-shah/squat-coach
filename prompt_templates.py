@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 import json
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent
+SQUAT_STATE_CONTRACT = json.loads((ROOT / "SQUAT_STATE_SCHEMA.json").read_text(encoding="utf-8"))
+SQUAT_STATE_FIELDS = tuple(SQUAT_STATE_CONTRACT["model_facing_fields"])
+OPTIONAL_SQUAT_STATE_FIELDS = tuple(SQUAT_STATE_CONTRACT["optional_model_facing_fields"])
+PHASE_VALUES = tuple(SQUAT_STATE_CONTRACT["phase_enum"])
+LIVE_FEEDBACK_POLICY = SQUAT_STATE_CONTRACT["live_feedback_policy"]
 
 
 FRAMING_HIGHLIGHTS = {
@@ -99,20 +108,24 @@ Policy:
 
 
 def live_feedback_instruction_block():
-    return """You are a local squat coach running during a live set.
+    state_fields = ", ".join(SQUAT_STATE_FIELDS)
+    optional_fields = ", ".join(OPTIONAL_SQUAT_STATE_FIELDS)
+    return f"""You are a local squat coach running during a live set.
 Return strict JSON only.
 
 Schema:
-{
+{{
   "reason_code": "good_depth|depth_shallow|torso_forward|knees_in|setup_issue",
   "feedback": string,
   "severity": "good|warn|bad|info",
   "speak": boolean
-}
+}}
 
 Policy:
 - Pick the single most useful cue right now.
 - Prioritize torso safety, then knee tracking, then depth, then encouragement.
+- Read only this compact squat-state contract: {state_fields}.
+- Optional v1 field: {optional_fields}.
 - Return exactly one reason_code.
 - Keep "feedback" to one short cue.
 - Prefer these exact feedback strings:
@@ -377,10 +390,14 @@ def live_few_shot_examples():
         {
             "input": {
                 "phase": "descending",
+                "rep_number": 2,
                 "torso_angle": 52,
-                "knee_valgus_ratio": 0.96,
                 "knee_angle": 128,
-                "depth_history": [146, 138, 128],
+                "hip_angle": 119,
+                "shin_angle": 24,
+                "hip_below_knee": False,
+                "confidence_min": 0.86,
+                "knee_valgus_ratio": 0.96,
             },
             "output": {
                 "reason_code": "torso_forward",
@@ -392,10 +409,14 @@ def live_few_shot_examples():
         {
             "input": {
                 "phase": "bottom",
+                "rep_number": 2,
                 "torso_angle": 29,
-                "knee_valgus_ratio": 0.79,
                 "knee_angle": 111,
-                "depth_history": [122, 115, 111],
+                "hip_angle": 102,
+                "shin_angle": 31,
+                "hip_below_knee": False,
+                "confidence_min": 0.83,
+                "knee_valgus_ratio": 0.79,
             },
             "output": {
                 "reason_code": "knees_in",
@@ -407,10 +428,14 @@ def live_few_shot_examples():
         {
             "input": {
                 "phase": "bottom",
+                "rep_number": 3,
                 "torso_angle": 26,
-                "knee_valgus_ratio": 0.95,
                 "knee_angle": 118,
-                "depth_history": [128, 122, 118],
+                "hip_angle": 108,
+                "shin_angle": 29,
+                "hip_below_knee": False,
+                "confidence_min": 0.88,
+                "knee_valgus_ratio": 0.95,
             },
             "output": {
                 "reason_code": "depth_shallow",
@@ -422,10 +447,14 @@ def live_few_shot_examples():
         {
             "input": {
                 "phase": "ascending",
+                "rep_number": 3,
                 "torso_angle": 24,
-                "knee_valgus_ratio": 0.98,
                 "knee_angle": 95,
-                "depth_history": [102, 98, 95],
+                "hip_angle": 94,
+                "shin_angle": 27,
+                "hip_below_knee": True,
+                "confidence_min": 0.9,
+                "knee_valgus_ratio": 0.98,
             },
             "output": {
                 "reason_code": "good_depth",
@@ -436,12 +465,15 @@ def live_few_shot_examples():
         },
         {
             "input": {
-                "phase": "setup",
+                "phase": "standing",
+                "rep_number": 0,
                 "torso_angle": 0,
-                "knee_valgus_ratio": 1.0,
                 "knee_angle": 180,
-                "depth_history": [],
-                "side_view_ok": False,
+                "hip_angle": 180,
+                "shin_angle": 0,
+                "hip_below_knee": False,
+                "confidence_min": 0.18,
+                "knee_valgus_ratio": 1.0,
             },
             "output": {
                 "reason_code": "setup_issue",
@@ -491,6 +523,39 @@ def build_live_feedback_prompt(state, include_examples=True):
 
 def build_live_feedback_messages(state, include_examples=True):
     return [{"role": "user", "content": build_live_feedback_prompt(state, include_examples=include_examples)}]
+
+
+def _float_or_default(value, default):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _int_or_default(value, default):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def compact_squat_state(state):
+    phase = state.get("phase")
+    if phase not in PHASE_VALUES:
+        phase = "standing"
+    compact = {
+        "phase": phase,
+        "rep_number": _int_or_default(state.get("rep_number", state.get("rep_count", 0)), 0),
+        "knee_angle": _float_or_default(state.get("knee_angle"), 180.0),
+        "hip_angle": _float_or_default(state.get("hip_angle"), 180.0),
+        "torso_angle": _float_or_default(state.get("torso_angle"), 0.0),
+        "shin_angle": _float_or_default(state.get("shin_angle"), 0.0),
+        "hip_below_knee": bool(state.get("hip_below_knee", False)),
+        "confidence_min": _float_or_default(state.get("confidence_min"), 0.0),
+    }
+    if state.get("knee_valgus_ratio") is not None:
+        compact["knee_valgus_ratio"] = _float_or_default(state.get("knee_valgus_ratio"), 1.0)
+    return compact
 
 
 def has_framing_issue_from_state(state):
@@ -681,16 +746,15 @@ def rule_live_feedback(snapshot):
     torso_angle = float(snapshot.get("torso_angle") or 0)
     knee_valgus_ratio = float(snapshot.get("knee_valgus_ratio") or 1)
     knee_angle = float(snapshot.get("knee_angle") or 180)
-    recent_depth = snapshot.get("depth_history") or []
-    if torso_angle >= 45 and phase != "standing":
-        return {"reason_code": "torso_forward", "feedback": "Chest up.", "severity": "warn", "speak": True}
-    if knee_valgus_ratio < 0.82 and phase in {"descending", "bottom"}:
-        return {"reason_code": "knees_in", "feedback": "Knees out.", "severity": "bad", "speak": True}
-    if phase == "bottom" and knee_angle > 100:
-        return {"reason_code": "depth_shallow", "feedback": "Go deeper.", "severity": "warn", "speak": True}
-    if recent_depth and max(recent_depth[-3:]) > 108:
-        return {"reason_code": "depth_shallow", "feedback": "Go deeper.", "severity": "warn", "speak": True}
-    return {"reason_code": "good_depth", "feedback": "Good depth.", "severity": "good", "speak": False}
+    policy = LIVE_FEEDBACK_POLICY
+    cues = policy["cues"]
+    if torso_angle >= policy["torso_warn_deg"] and phase != "standing":
+        return {"reason_code": "torso_forward", "feedback": cues["torso_forward"], "severity": "warn", "speak": True}
+    if knee_valgus_ratio < policy["knee_valgus_warn_ratio"] and phase in {"descending", "bottom"}:
+        return {"reason_code": "knees_in", "feedback": cues["knees_in"], "severity": "bad", "speak": True}
+    if phase == "bottom" and (not snapshot.get("hip_below_knee", False) or knee_angle > policy["bottom_depth_knee_angle_deg"]):
+        return {"reason_code": "depth_shallow", "feedback": cues["depth_shallow"], "severity": "warn", "speak": True}
+    return {"reason_code": "good_depth", "feedback": cues["good_depth"], "severity": "good", "speak": False}
 
 
 def sanitize_live_feedback(snapshot, output):
